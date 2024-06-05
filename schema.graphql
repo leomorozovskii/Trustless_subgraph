@@ -1,32 +1,44 @@
-type OfferCancelled @entity(immutable: true) {
-  id: Bytes!
-  tradeID: BigInt! # uint256
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
+type TradeOffer @entity {
+    id: String!
+    tokenFrom: Bytes!
+    tokenTo: Bytes!
+    amountFrom: BigInt!
+    amountTo: BigInt!
+    creator: Bytes!
+    taker: Bytes!
+    optionalTaker: Bytes
+    active: Boolean!
+    completed: Boolean!
+    tradeID: BigInt!
+    blockNumber: BigInt!
+    blockTimestamp: BigInt!
+    transactionHash: Bytes!
 }
 
 type OfferCreated @entity(immutable: true) {
-  id: Bytes!
-  tradeID: BigInt! # uint256
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
+    id: String!
+    tradeID: BigInt! # uint256
+    tradeOffer: TradeOffer!
+    creator: Bytes!
+    blockNumber: BigInt!
+    blockTimestamp: BigInt!
+    transactionHash: Bytes!
+}
+
+type OfferCancelled @entity(immutable: true) {
+    id: String!
+    tradeOffer: TradeOffer!
+    creator: Bytes!
+    blockNumber: BigInt!
+    blockTimestamp: BigInt!
+    transactionHash: Bytes!
 }
 
 type OfferTaken @entity(immutable: true) {
-  id: Bytes!
-  tradeID: BigInt! # uint256
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
-}
-
-type OwnershipTransferred @entity(immutable: true) {
-  id: Bytes!
-  previousOwner: Bytes! # address
-  newOwner: Bytes! # address
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
+    id: String!
+    tradeOffer: TradeOffer!
+    taker: Bytes!
+    blockNumber: BigInt!
+    blockTimestamp: BigInt!
+    transactionHash: Bytes!
 }

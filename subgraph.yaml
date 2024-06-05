@@ -22,6 +22,9 @@ dataSources:
       abis:
         - name: TrustlessOTC
           file: ./abis/TrustlessOTC.json
+      callHandlers:
+        - function: initiateTrade(address,address,uint256,uint256,address)
+          handler: handleInitiateTrade
       eventHandlers:
         - event: OfferCancelled(indexed uint256)
           handler: handleOfferCancelled
@@ -29,4 +32,5 @@ dataSources:
           handler: handleOfferCreated
         - event: OfferTaken(indexed uint256)
           handler: handleOfferTaken
+
       file: ./src/trustless-otc.ts
