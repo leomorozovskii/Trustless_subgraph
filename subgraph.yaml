@@ -19,7 +19,6 @@ dataSources:
         - OfferCancelled
         - OfferCreated
         - OfferTaken
-        - OwnershipTransferred
       abis:
         - name: TrustlessOTC
           file: ./abis/TrustlessOTC.json
@@ -30,6 +29,4 @@ dataSources:
           handler: handleOfferCreated
         - event: OfferTaken(indexed uint256)
           handler: handleOfferTaken
-        - event: OwnershipTransferred(indexed address,indexed address)
-          handler: handleOwnershipTransferred
       file: ./src/trustless-otc.ts
