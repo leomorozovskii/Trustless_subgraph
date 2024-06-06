@@ -9,6 +9,7 @@ import {
     OfferCancelled,
     OfferCreated,
     OfferTaken,
+    OfferStats,
     TradeOffer,
 } from '../generated/schema';
 import {
@@ -22,8 +23,9 @@ import {
 export const ADDRESS_ZERO = Bytes.fromHexString(
     '0x0000000000000000000000000000000000000000',
 );
-export let ZERO_BI = BigInt.fromI32(0);
-export let ZERO_BD = BigDecimal.fromString('0');
+export const ZERO_BI = BigInt.fromI32(0);
+export const ONE_BI = BigInt.fromI32(1);
+export const ZERO_BD = BigDecimal.fromString('0');
 
 export function handleInitiateTrade(call: InitiateTradeCall): void {
     let offer = OfferCreated.load(call.transaction.hash.toHexString());
@@ -95,6 +97,19 @@ export function handleOfferCreated(event: OfferCreatedEvent): void {
     offer.blockTimestamp = event.block.timestamp;
     offer.transactionHash = event.transaction.hash;
     offer.save();
+
+    let stats = OfferStats.load(event.transaction.from);
+    if (!stats) {
+        stats = new OfferStats(event.transaction.from);
+        stats.accepted = ZERO_BI;
+        stats.canceled = ZERO_BI;
+        stats.total = ZERO_BI;
+        stats.lastUpdateTimestamp = ZERO_BI;
+    }
+
+    stats.total = stats.total.plus(ONE_BI);
+    stats.lastUpdateTimestamp = event.block.timestamp;
+    stats.save();
 }
 
 export function handleOfferCancelled(event: OfferCancelledEvent): void {
@@ -115,6 +130,13 @@ export function handleOfferCancelled(event: OfferCancelledEvent): void {
         offer.blockTimestamp = event.block.timestamp;
         offer.transactionHash = event.transaction.hash;
         offer.save();
+
+        let stats = OfferStats.load(tradeOffer.creator);
+        if (stats) {
+            stats.canceled = stats.canceled.plus(ONE_BI);
+            stats.lastUpdateTimestamp = event.block.timestamp;
+            stats.save();
+        }
     }
 }
 
@@ -138,5 +160,12 @@ export function handleOfferTaken(event: OfferTakenEvent): void {
         offer.blockTimestamp = event.block.timestamp;
         offer.transactionHash = event.transaction.hash;
         offer.save();
+
+        let stats = OfferStats.load(tradeOffer.creator);
+        if (stats) {
+            stats.accepted = stats.accepted.plus(ONE_BI);
+            stats.lastUpdateTimestamp = event.block.timestamp;
+            stats.save();
+        }
     }
 }
