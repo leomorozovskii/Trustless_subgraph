@@ -82,8 +82,8 @@ export function handleOfferCreated(event: OfferCreatedEvent): void {
         tradeOffer.completed = false;
         tradeOffer.tradeID = ZERO_BI;
         tradeOffer.blockNumber = event.block.number;
-        tradeOffer.blockTimestamp = event.block.timestamp;
-        tradeOffer.transactionHash = event.transaction.hash;
+        tradeOffer.creationTimestamp = event.block.timestamp;
+        tradeOffer.creationHash = event.transaction.hash;
         tradeOffer.save();
 
         offer.tradeOffer = tradeOffer.id;
@@ -101,6 +101,8 @@ export function handleOfferCancelled(event: OfferCancelledEvent): void {
     let tradeOffer = TradeOffer.load(event.params.tradeID.toString());
     if (tradeOffer) {
         tradeOffer.active = false;
+        tradeOffer.cancelTimestamp = event.block.timestamp;
+        tradeOffer.cancelHash = event.transaction.hash;
         tradeOffer.save();
     }
 
@@ -122,6 +124,8 @@ export function handleOfferTaken(event: OfferTakenEvent): void {
         tradeOffer.active = false;
         tradeOffer.completed = true;
         tradeOffer.taker = event.transaction.from;
+        tradeOffer.takenTimestamp = event.block.timestamp;
+        tradeOffer.takenHash = event.transaction.hash;
         tradeOffer.save();
     }
 

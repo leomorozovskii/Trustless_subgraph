@@ -12,8 +12,12 @@ type TradeOffer @entity {
     completed: Boolean!
     tradeID: BigInt!
     blockNumber: BigInt!
-    blockTimestamp: BigInt!
-    transactionHash: Bytes!
+    creationTimestamp: BigInt!
+    cancelTimestamp: BigInt
+    takenTimestamp: BigInt
+    creationHash: Bytes!
+    cancelHash: Bytes
+    takenHash: Bytes
 }
 
 type OfferCreated @entity(immutable: true) {
