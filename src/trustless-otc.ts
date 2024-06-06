@@ -3,6 +3,7 @@ import {
     OfferCreated as OfferCreatedEvent,
     OfferTaken as OfferTakenEvent,
     InitiateTradeCall as InitiateTradeCall,
+    TrustlessOTC,
 } from '../generated/TrustlessOTC/TrustlessOTC';
 import {
     OfferCancelled,
@@ -10,12 +11,19 @@ import {
     OfferTaken,
     TradeOffer,
 } from '../generated/schema';
-import { BigInt, Bytes } from '@graphprotocol/graph-ts';
+import {
+    BigInt,
+    Bytes,
+    BigDecimal,
+    ethereum,
+    Address,
+} from '@graphprotocol/graph-ts';
 
 export const ADDRESS_ZERO = Bytes.fromHexString(
     '0x0000000000000000000000000000000000000000',
 );
 export let ZERO_BI = BigInt.fromI32(0);
+export let ZERO_BD = BigDecimal.fromString('0');
 
 export function handleInitiateTrade(call: InitiateTradeCall): void {
     let offer = OfferCreated.load(call.transaction.hash.toHexString());
@@ -24,13 +32,33 @@ export function handleInitiateTrade(call: InitiateTradeCall): void {
         if (tradeOffer) {
             tradeOffer.tokenFrom = call.inputs._tokenFrom;
             tradeOffer.tokenTo = call.inputs._tokenTo;
-            tradeOffer.amountFrom = call.inputs._amountFrom;
-            tradeOffer.amountTo = call.inputs._amountTo;
+            tradeOffer.amountFrom = call.inputs._amountFrom.toBigDecimal();
+            tradeOffer.amountTo = call.inputs._amountTo.toBigDecimal();
             tradeOffer.creator = call.transaction.from;
             tradeOffer.optionalTaker = call.inputs._optionalTaker;
             tradeOffer.active = true;
             tradeOffer.tradeID = offer.tradeID;
 
+            tradeOffer.save();
+        }
+
+        // Calculate amountFrom with fee
+        let feeResult: ethereum.CallResult<BigInt> = new ethereum.CallResult();
+        if (call.transaction.to !== null) {
+            let contractInstance = TrustlessOTC.bind(
+                call.transaction.to as Address,
+            );
+            feeResult = contractInstance.try_feeBasisPoints();
+        }
+
+        if (!feeResult.reverted && tradeOffer) {
+            let feeAmount = call.inputs._amountFrom
+                .toBigDecimal()
+                .times(feeResult.value.toBigDecimal())
+                .div(BigDecimal.fromString('10000'));
+            tradeOffer.amountFromWithFee = call.inputs._amountFrom
+                .toBigDecimal()
+                .minus(feeAmount);
             tradeOffer.save();
         }
     }
@@ -44,8 +72,9 @@ export function handleOfferCreated(event: OfferCreatedEvent): void {
         tradeOffer = new TradeOffer(event.params.tradeID.toString());
         tradeOffer.tokenFrom = ADDRESS_ZERO;
         tradeOffer.tokenTo = ADDRESS_ZERO;
-        tradeOffer.amountFrom = ZERO_BI;
-        tradeOffer.amountTo = ZERO_BI;
+        tradeOffer.amountFrom = ZERO_BD;
+        tradeOffer.amountFromWithFee = ZERO_BD;
+        tradeOffer.amountTo = ZERO_BD;
         tradeOffer.creator = ADDRESS_ZERO;
         tradeOffer.taker = ADDRESS_ZERO;
         tradeOffer.optionalTaker = ADDRESS_ZERO;
@@ -77,6 +106,7 @@ export function handleOfferCancelled(event: OfferCancelledEvent): void {
 
     if (tradeOffer) {
         let offer = new OfferCancelled(tradeOffer.tradeID.toString());
+        offer.tradeID = event.params.tradeID;
         offer.tradeOffer = tradeOffer.id;
         offer.creator = event.transaction.from;
         offer.blockNumber = event.block.number;
@@ -97,6 +127,7 @@ export function handleOfferTaken(event: OfferTakenEvent): void {
 
     if (tradeOffer) {
         let offer = new OfferTaken(tradeOffer.tradeID.toString());
+        offer.tradeID = event.params.tradeID;
         offer.tradeOffer = tradeOffer.id;
         offer.taker = event.transaction.from;
         offer.blockNumber = event.block.number;

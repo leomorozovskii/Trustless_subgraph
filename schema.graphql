@@ -2,8 +2,9 @@ type TradeOffer @entity {
     id: String!
     tokenFrom: Bytes!
     tokenTo: Bytes!
-    amountFrom: BigInt!
-    amountTo: BigInt!
+    amountFrom: BigDecimal!
+    amountFromWithFee: BigDecimal!
+    amountTo: BigDecimal!
     creator: Bytes!
     taker: Bytes!
     optionalTaker: Bytes
@@ -17,7 +18,7 @@ type TradeOffer @entity {
 
 type OfferCreated @entity(immutable: true) {
     id: String!
-    tradeID: BigInt! # uint256
+    tradeID: BigInt!
     tradeOffer: TradeOffer!
     creator: Bytes!
     blockNumber: BigInt!
@@ -27,6 +28,7 @@ type OfferCreated @entity(immutable: true) {
 
 type OfferCancelled @entity(immutable: true) {
     id: String!
+    tradeID: BigInt!
     tradeOffer: TradeOffer!
     creator: Bytes!
     blockNumber: BigInt!
@@ -36,6 +38,7 @@ type OfferCancelled @entity(immutable: true) {
 
 type OfferTaken @entity(immutable: true) {
     id: String!
+    tradeID: BigInt!
     tradeOffer: TradeOffer!
     taker: Bytes!
     blockNumber: BigInt!
