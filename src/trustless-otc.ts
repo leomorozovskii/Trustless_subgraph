@@ -20,7 +20,7 @@ import {
     ethereum,
     Address,
 } from '@graphprotocol/graph-ts';
-import { fetchTokenDecimals, fetchTokenName, fetchTokenSymbol } from './helpers';
+import { fetchFeeBasisPoints, fetchTokenDecimals, fetchTokenName, fetchTokenSymbol } from './helpers';
 
 export const ADDRESS_ZERO = Bytes.fromHexString(
     '0x0000000000000000000000000000000000000000',
@@ -71,18 +71,12 @@ export function handleInitiateTrade(call: InitiateTradeCall): void {
         }
 
         // Calculate amountFrom with fee
-        let feeResult: ethereum.CallResult<BigInt> = new ethereum.CallResult();
-        if (call.transaction.to !== null) {
-            let contractInstance = TrustlessOTC.bind(
-                call.transaction.to as Address,
-            );
-            feeResult = contractInstance.try_feeBasisPoints();
-        }
+        let feeResult = fetchFeeBasisPoints(call.transaction.to as Address);
 
-        if (!feeResult.reverted && tradeOffer) {
+        if (tradeOffer) {
             let feeAmount = call.inputs._amountFrom
                 .toBigDecimal()
-                .times(feeResult.value.toBigDecimal())
+                .times(feeResult.toBigDecimal())
                 .div(BigDecimal.fromString('10000'));
             tradeOffer.amountFromWithFee = call.inputs._amountFrom
                 .toBigDecimal()
@@ -91,7 +85,6 @@ export function handleInitiateTrade(call: InitiateTradeCall): void {
         }
     }
 }
-
 
 export function handleOfferCreated(event: OfferCreatedEvent): void {
     let offer = new OfferCreated(event.transaction.hash.toHexString());
