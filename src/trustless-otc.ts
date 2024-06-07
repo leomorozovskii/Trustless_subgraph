@@ -2,8 +2,7 @@ import {
     OfferCancelled as OfferCancelledEvent,
     OfferCreated as OfferCreatedEvent,
     OfferTaken as OfferTakenEvent,
-    InitiateTradeCall as InitiateTradeCall,
-    TrustlessOTC,
+    InitiateTradeCall as InitiateTradeCall
 } from '../generated/TrustlessOTC/TrustlessOTC';
 import {
     OfferCancelled,
@@ -17,7 +16,6 @@ import {
     BigInt,
     Bytes,
     BigDecimal,
-    ethereum,
     Address,
 } from '@graphprotocol/graph-ts';
 import { fetchFeeBasisPoints, fetchTokenDecimals, fetchTokenName, fetchTokenSymbol } from './helpers';

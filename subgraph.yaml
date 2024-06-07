@@ -10,7 +10,7 @@ dataSources:
     source:
       address: "0xE13aC924bB0B0260b7d7f2710c0224161b9f10Ed"
       abi: TrustlessOTC
-      startBlock: 6049084
+      startBlock: 5987757
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
