@@ -5,12 +5,14 @@ import {
     InitiateTradeCall as InitiateTradeCall,
     TrustlessOTC,
 } from '../generated/TrustlessOTC/TrustlessOTC';
+import { ERC20 } from '../generated/TrustlessOTC/ERC20';
 import {
     OfferCancelled,
     OfferCreated,
     OfferTaken,
     OfferStats,
     TradeOffer,
+    Token,
 } from '../generated/schema';
 import {
     BigInt,
@@ -19,6 +21,7 @@ import {
     ethereum,
     Address,
 } from '@graphprotocol/graph-ts';
+import { log } from '@graphprotocol/graph-ts';
 
 export const ADDRESS_ZERO = Bytes.fromHexString(
     '0x0000000000000000000000000000000000000000',
@@ -28,12 +31,38 @@ export const ONE_BI = BigInt.fromI32(1);
 export const ZERO_BD = BigDecimal.fromString('0');
 
 export function handleInitiateTrade(call: InitiateTradeCall): void {
+    // Added tokens
+    // create the tokens
+    let tokenFrom = Token.load(call.inputs._tokenFrom);
+    let tokenTo = Token.load(call.inputs._tokenTo);
+
+    // fetch info if null
+    if (tokenFrom === null) {
+        tokenFrom = new Token(call.inputs._tokenFrom);
+
+        let tokenFromContract = ERC20.bind(call.inputs._tokenFrom);
+        tokenFrom.symbol = tokenFromContract.symbol();
+        tokenFrom.name = tokenFromContract.name();
+        let decimals = tokenFromContract.decimals();
+        tokenFrom.decimals = BigInt.fromI32(decimals);
+        tokenFrom.save();
+    }
+
+    if (tokenTo === null) {
+        tokenTo = new Token(call.inputs._tokenTo);
+
+        tokenTo.symbol = fetchTokenSymbol(call.inputs._tokenTo);
+        tokenTo.name = fetchTokenName(call.inputs._tokenTo);
+        tokenTo.decimals = fetchTokenDecimals(call.inputs._tokenTo);
+        tokenTo.save();
+    }
+
     let offer = OfferCreated.load(call.transaction.hash.toHexString());
     if (offer) {
         let tradeOffer = TradeOffer.load(offer.tradeID.toString());
         if (tradeOffer) {
-            tradeOffer.tokenFrom = call.inputs._tokenFrom;
-            tradeOffer.tokenTo = call.inputs._tokenTo;
+            tradeOffer.tokenFrom = tokenFrom.id;
+            tradeOffer.tokenTo = tokenTo.id;
             tradeOffer.amountFrom = call.inputs._amountFrom.toBigDecimal();
             tradeOffer.amountTo = call.inputs._amountTo.toBigDecimal();
             tradeOffer.creator = call.transaction.from;
@@ -66,14 +95,55 @@ export function handleInitiateTrade(call: InitiateTradeCall): void {
     }
 }
 
+export function fetchTokenSymbol(tokenAddress: Address): string {
+    let contract = ERC20.bind(tokenAddress);
+
+    let symbolValue = 'UNKNOWN';
+    let symbolResult = contract.try_symbol();
+    if (symbolResult.reverted) {
+        log.warning('Failed to fetch symbol for contract at address: {}', [
+            tokenAddress.toHex(),
+        ]);
+    } else {
+        symbolValue = symbolResult.value;
+    }
+    return symbolValue;
+}
+
+export function fetchTokenName(tokenAddress: Address): string {
+    let contract = ERC20.bind(tokenAddress);
+
+    let name = 'UNKNOWN';
+    let nameResult = contract.try_symbol();
+    if (nameResult.reverted) {
+        log.warning('Failed to fetch name for contract at address: {}', [
+            tokenAddress.toHex(),
+        ]);
+    } else {
+        name = nameResult.value;
+    }
+
+    return name;
+}
+
+export function fetchTokenDecimals(tokenAddress: Address): BigInt {
+    let contract = ERC20.bind(tokenAddress);
+
+    let decimalValue = BigInt.fromString('0');
+    let decimalResult = contract.try_decimals();
+    if (!decimalResult.reverted) {
+        decimalValue = BigInt.fromI32(decimalResult.value);
+    }
+
+    return decimalValue;
+}
+
 export function handleOfferCreated(event: OfferCreatedEvent): void {
     let offer = new OfferCreated(event.transaction.hash.toHexString());
 
     let tradeOffer = TradeOffer.load(event.params.tradeID.toString());
     if (tradeOffer == null) {
         tradeOffer = new TradeOffer(event.params.tradeID.toString());
-        tradeOffer.tokenFrom = ADDRESS_ZERO;
-        tradeOffer.tokenTo = ADDRESS_ZERO;
         tradeOffer.amountFrom = ZERO_BD;
         tradeOffer.amountFromWithFee = ZERO_BD;
         tradeOffer.amountTo = ZERO_BD;

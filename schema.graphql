@@ -1,7 +1,14 @@
+type Token @entity {
+    id: Bytes!
+    symbol: String
+    name: String!
+    decimals: BigInt!
+}
+
 type TradeOffer @entity {
     id: String!
-    tokenFrom: Bytes!
-    tokenTo: Bytes!
+    tokenFrom: Token
+    tokenTo: Token
     amountFrom: BigDecimal!
     amountFromWithFee: BigDecimal!
     amountTo: BigDecimal!
