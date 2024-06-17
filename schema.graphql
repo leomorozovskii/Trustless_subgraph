@@ -18,6 +18,7 @@ type TradeOffer @entity {
     active: Boolean!
     completed: Boolean!
     tradeID: BigInt!
+    fee: BigInt!
     blockNumber: BigInt!
     creationTimestamp: BigInt!
     cancelTimestamp: BigInt

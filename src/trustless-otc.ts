@@ -68,15 +68,12 @@ export function handleInitiateTrade(call: InitiateTradeCall): void {
             tradeOffer.save();
         }
 
-        // Calculate amountFrom with fee
-        let feeResult = fetchFeeBasisPoints(call.transaction.to as Address);
-
         if (tradeOffer) {
-            let precision = BigInt.fromString("10000");
+            let precision = BigInt.fromString('10000');
             let amountFrom = BigInt.fromString(
                 call.inputs._amountFrom.toString(),
             );
-            let feeAmount = amountFrom.times(feeResult).div(precision);
+            let feeAmount = amountFrom.times(tradeOffer.fee).div(precision);
             tradeOffer.amountFromWithFee = call.inputs._amountFrom
                 .minus(feeAmount)
                 .toBigDecimal();
@@ -100,11 +97,12 @@ export function handleOfferCreated(event: OfferCreatedEvent): void {
         tradeOffer.active = false;
         tradeOffer.completed = false;
         tradeOffer.tradeID = ZERO_BI;
+        tradeOffer.fee = fetchFeeBasisPoints(event.address);
         tradeOffer.blockNumber = event.block.number;
         tradeOffer.creationTimestamp = event.block.timestamp;
         tradeOffer.creationHash = event.transaction.hash;
         tradeOffer.save();
-
+        
         offer.tradeOffer = tradeOffer.id;
     }
 
