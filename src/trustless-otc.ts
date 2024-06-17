@@ -2,7 +2,7 @@ import {
     OfferCancelled as OfferCancelledEvent,
     OfferCreated as OfferCreatedEvent,
     OfferTaken as OfferTakenEvent,
-    InitiateTradeCall as InitiateTradeCall
+    InitiateTradeCall as InitiateTradeCall,
 } from '../generated/TrustlessOTC/TrustlessOTC';
 import {
     OfferCancelled,
@@ -12,13 +12,13 @@ import {
     TradeOffer,
     Token,
 } from '../generated/schema';
+import { BigInt, Bytes, BigDecimal, Address } from '@graphprotocol/graph-ts';
 import {
-    BigInt,
-    Bytes,
-    BigDecimal,
-    Address,
-} from '@graphprotocol/graph-ts';
-import { fetchFeeBasisPoints, fetchTokenDecimals, fetchTokenName, fetchTokenSymbol } from './helpers';
+    fetchFeeBasisPoints,
+    fetchTokenDecimals,
+    fetchTokenName,
+    fetchTokenSymbol,
+} from './helpers';
 
 export const ADDRESS_ZERO = Bytes.fromHexString(
     '0x0000000000000000000000000000000000000000',
@@ -72,13 +72,14 @@ export function handleInitiateTrade(call: InitiateTradeCall): void {
         let feeResult = fetchFeeBasisPoints(call.transaction.to as Address);
 
         if (tradeOffer) {
-            let feeAmount = call.inputs._amountFrom
-                .toBigDecimal()
-                .times(feeResult.toBigDecimal())
-                .div(BigDecimal.fromString('10000'));
+            let precision = BigInt.fromString("10000");
+            let amountFrom = BigInt.fromString(
+                call.inputs._amountFrom.toString(),
+            );
+            let feeAmount = amountFrom.times(feeResult).div(precision);
             tradeOffer.amountFromWithFee = call.inputs._amountFrom
-                .toBigDecimal()
-                .minus(feeAmount);
+                .minus(feeAmount)
+                .toBigDecimal();
             tradeOffer.save();
         }
     }
