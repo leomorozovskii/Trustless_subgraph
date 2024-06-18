@@ -12,7 +12,13 @@ import {
     TradeOffer,
     Token,
 } from '../generated/schema';
-import { BigInt, Bytes, BigDecimal } from '@graphprotocol/graph-ts';
+import {
+    BigInt,
+    Bytes,
+    BigDecimal,
+    Address,
+    ethereum,
+} from '@graphprotocol/graph-ts';
 import {
     fetchOfferDetails,
     fetchTokenDecimals,
@@ -26,6 +32,8 @@ export const ADDRESS_ZERO = Bytes.fromHexString(
 export const ZERO_BI = BigInt.fromI32(0);
 export const ONE_BI = BigInt.fromI32(1);
 export const ZERO_BD = BigDecimal.fromString('0');
+export const TRANSFER_TOPIC =
+    '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
 export function handleInitiateTrade(call: InitiateTradeCall): void {
     // Added tokens
@@ -107,9 +115,9 @@ export function handleOfferCreated(event: OfferCreatedEvent): void {
     offer.transactionHash = event.transaction.hash;
     offer.save();
 
-    let stats = OfferStats.load(event.transaction.from);
+    let stats = OfferStats.load(tradeOffer.creator);
     if (!stats) {
-        stats = new OfferStats(event.transaction.from);
+        stats = new OfferStats(tradeOffer.creator);
         stats.accepted = ZERO_BI;
         stats.canceled = ZERO_BI;
         stats.total = ZERO_BI;
@@ -123,18 +131,17 @@ export function handleOfferCreated(event: OfferCreatedEvent): void {
 
 export function handleOfferCancelled(event: OfferCancelledEvent): void {
     let tradeOffer = TradeOffer.load(event.params.tradeID.toString());
+
     if (tradeOffer) {
         tradeOffer.active = false;
         tradeOffer.cancelTimestamp = event.block.timestamp;
         tradeOffer.cancelHash = event.transaction.hash;
         tradeOffer.save();
-    }
 
-    if (tradeOffer) {
         let offer = new OfferCancelled(tradeOffer.tradeID.toString());
         offer.tradeID = event.params.tradeID;
         offer.tradeOffer = tradeOffer.id;
-        offer.creator = event.transaction.from;
+        offer.creator = tradeOffer.creator;
         offer.blockNumber = event.block.number;
         offer.blockTimestamp = event.block.timestamp;
         offer.transactionHash = event.transaction.hash;
@@ -150,31 +157,67 @@ export function handleOfferCancelled(event: OfferCancelledEvent): void {
 }
 
 export function handleOfferTaken(event: OfferTakenEvent): void {
-    let tradeOffer = TradeOffer.load(event.params.tradeID.toString());
+    const tradeOffer = TradeOffer.load(event.params.tradeID.toString());
+    let offerTaken = OfferTaken.load(event.params.tradeID.toString());
+
     if (tradeOffer) {
         tradeOffer.active = false;
         tradeOffer.completed = true;
-        tradeOffer.taker = event.transaction.from;
         tradeOffer.takenTimestamp = event.block.timestamp;
         tradeOffer.takenHash = event.transaction.hash;
         tradeOffer.save();
-    }
 
-    if (tradeOffer) {
-        let offer = new OfferTaken(tradeOffer.tradeID.toString());
-        offer.tradeID = event.params.tradeID;
-        offer.tradeOffer = tradeOffer.id;
-        offer.taker = event.transaction.from;
-        offer.blockNumber = event.block.number;
-        offer.blockTimestamp = event.block.timestamp;
-        offer.transactionHash = event.transaction.hash;
-        offer.save();
+        offerTaken = new OfferTaken(event.params.tradeID.toString());
+        offerTaken.tradeID = event.params.tradeID;
+        offerTaken.tradeOffer = tradeOffer.id;
+        offerTaken.taker = ADDRESS_ZERO;
+        offerTaken.blockNumber = event.block.number;
+        offerTaken.blockTimestamp = event.block.timestamp;
+        offerTaken.transactionHash = event.transaction.hash;
+        offerTaken.save();
 
-        let stats = OfferStats.load(tradeOffer.creator);
+        const stats = OfferStats.load(tradeOffer.creator);
         if (stats) {
             stats.accepted = stats.accepted.plus(ONE_BI);
             stats.lastUpdateTimestamp = event.block.timestamp;
             stats.save();
+        }
+    }
+
+    const txReceipt: ethereum.TransactionReceipt | null = event.receipt;
+
+    if (txReceipt != null) {
+        for (let i = 0; i < txReceipt.logs.length; i++) {
+            const log = txReceipt.logs[i];
+
+            if (
+                log.topics[0].toHexString() == TRANSFER_TOPIC &&
+                tradeOffer &&
+                offerTaken
+            ) {
+                const correctFromAddressFormat = log.topics[1]
+                    .toHexString()
+                    .substr(26, 40);
+                const fromAddress = Address.fromString(
+                    correctFromAddressFormat,
+                );
+
+                const correctToAddressFormat = log.topics[2]
+                    .toHexString()
+                    .substr(26, 40);
+
+                const toAddress: Address = Address.fromString(
+                    correctToAddressFormat,
+                );
+                const creator: Address = Address.fromBytes(tradeOffer.creator);
+
+                if (creator == toAddress) {
+                    tradeOffer.taker = fromAddress;
+                    tradeOffer.save();
+                    offerTaken.taker = fromAddress;
+                    offerTaken.save();
+                }
+            }
         }
     }
 }
