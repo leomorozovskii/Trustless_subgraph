@@ -12,9 +12,9 @@ import {
     TradeOffer,
     Token,
 } from '../generated/schema';
-import { BigInt, Bytes, BigDecimal, Address } from '@graphprotocol/graph-ts';
+import { BigInt, Bytes, BigDecimal } from '@graphprotocol/graph-ts';
 import {
-    fetchFeeBasisPoints,
+    fetchOfferDetails,
     fetchTokenDecimals,
     fetchTokenName,
     fetchTokenSymbol,
@@ -56,27 +56,8 @@ export function handleInitiateTrade(call: InitiateTradeCall): void {
     if (offer) {
         let tradeOffer = TradeOffer.load(offer.tradeID.toString());
         if (tradeOffer) {
-            tradeOffer.tokenFrom = tokenFrom.id;
-            tradeOffer.tokenTo = tokenTo.id;
-            tradeOffer.amountFrom = call.inputs._amountFrom.toBigDecimal();
-            tradeOffer.amountTo = call.inputs._amountTo.toBigDecimal();
-            tradeOffer.creator = call.transaction.from;
             tradeOffer.optionalTaker = call.inputs._optionalTaker;
-            tradeOffer.active = true;
-            tradeOffer.tradeID = offer.tradeID;
 
-            tradeOffer.save();
-        }
-
-        if (tradeOffer) {
-            let precision = BigInt.fromString('10000');
-            let amountFrom = BigInt.fromString(
-                call.inputs._amountFrom.toString(),
-            );
-            let feeAmount = amountFrom.times(tradeOffer.fee).div(precision);
-            tradeOffer.amountFromWithFee = call.inputs._amountFrom
-                .minus(feeAmount)
-                .toBigDecimal();
             tradeOffer.save();
         }
     }
@@ -88,26 +69,39 @@ export function handleOfferCreated(event: OfferCreatedEvent): void {
     let tradeOffer = TradeOffer.load(event.params.tradeID.toString());
     if (tradeOffer == null) {
         tradeOffer = new TradeOffer(event.params.tradeID.toString());
-        tradeOffer.amountFrom = ZERO_BD;
-        tradeOffer.amountFromWithFee = ZERO_BD;
-        tradeOffer.amountTo = ZERO_BD;
-        tradeOffer.creator = ADDRESS_ZERO;
+        let offerDetails = fetchOfferDetails(
+            event.address,
+            event.params.tradeID,
+        ).value;
+
+        tradeOffer.tokenFrom = offerDetails.get_tokenFrom();
+        tradeOffer.tokenTo = offerDetails.get_tokenTo();
+        tradeOffer.amountFrom = offerDetails.get_amountFrom().toBigDecimal();
+        tradeOffer.amountTo = offerDetails.get_amountTo().toBigDecimal();
+        tradeOffer.amountFromWithFee = offerDetails
+            .get_amountFrom()
+            .minus(offerDetails.get_fee())
+            .toBigDecimal();
+
+        tradeOffer.feeAmount = offerDetails.get_fee();
+        tradeOffer.creator = offerDetails.get_creator();
+        tradeOffer.txFrom = event.transaction.from;
         tradeOffer.taker = ADDRESS_ZERO;
-        tradeOffer.optionalTaker = ADDRESS_ZERO;
-        tradeOffer.active = false;
+        tradeOffer.active = true;
         tradeOffer.completed = false;
-        tradeOffer.tradeID = ZERO_BI;
-        tradeOffer.fee = fetchFeeBasisPoints(event.address);
+        tradeOffer.tradeID = event.params.tradeID;
+        tradeOffer.optionalTaker = ADDRESS_ZERO;
         tradeOffer.blockNumber = event.block.number;
         tradeOffer.creationTimestamp = event.block.timestamp;
         tradeOffer.creationHash = event.transaction.hash;
+
         tradeOffer.save();
-        
+
         offer.tradeOffer = tradeOffer.id;
     }
 
+    offer.creator = tradeOffer.creator;
     offer.tradeID = event.params.tradeID;
-    offer.creator = event.transaction.from;
     offer.blockNumber = event.block.number;
     offer.blockTimestamp = event.block.timestamp;
     offer.transactionHash = event.transaction.hash;

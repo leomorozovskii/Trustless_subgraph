@@ -1,7 +1,10 @@
 import { ERC20 } from '../generated/TrustlessOTC/ERC20';
-import { BigInt, Address } from '@graphprotocol/graph-ts';
+import { BigInt, Address, ethereum } from '@graphprotocol/graph-ts';
 import { log } from '@graphprotocol/graph-ts';
-import { TrustlessOTC } from '../generated/TrustlessOTC/TrustlessOTC';
+import {
+    TrustlessOTC,
+    TrustlessOTC__getOfferDetailsResult,
+} from '../generated/TrustlessOTC/TrustlessOTC';
 
 // Some precompile contracts return a value,
 // so the subgraph does not recognize the error when the function is called
@@ -101,19 +104,24 @@ export function fetchTokenDecimals(tokenAddress: Address): BigInt {
     return decimalValue;
 }
 
-export function fetchFeeBasisPoints(tokenAddress: Address): BigInt {
+export function fetchOfferDetails(
+    tokenAddress: Address,
+    tradeID: BigInt,
+): ethereum.CallResult<TrustlessOTC__getOfferDetailsResult> {
     let contract = TrustlessOTC.bind(tokenAddress);
 
-    let fee = BigInt.fromString('0');
+    let offerDetails =
+        new ethereum.CallResult<TrustlessOTC__getOfferDetailsResult>();
 
-    let feeResult = contract.try_feeBasisPoints();
-    if (feeResult.reverted) {
-        log.warning('Failed to fetch fee for contract at address: {}', [
-            tokenAddress.toHex(),
-        ]);
+    offerDetails = contract.try_getOfferDetails(tradeID);
+    if (offerDetails.reverted) {
+        log.warning(
+            'Failed to fetch offer details for contract at address: {}',
+            [tokenAddress.toHex()],
+        );
     } else {
-        fee = feeResult.value;
+        offerDetails = offerDetails;
     }
 
-    return fee;
+    return offerDetails;
 }

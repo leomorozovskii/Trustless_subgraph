@@ -12,13 +12,14 @@ type TradeOffer @entity {
     amountFrom: BigDecimal!
     amountFromWithFee: BigDecimal!
     amountTo: BigDecimal!
+    txFrom: Bytes!
     creator: Bytes!
     taker: Bytes!
     optionalTaker: Bytes
     active: Boolean!
     completed: Boolean!
     tradeID: BigInt!
-    fee: BigInt!
+    feeAmount: BigInt!
     blockNumber: BigInt!
     creationTimestamp: BigInt!
     cancelTimestamp: BigInt
