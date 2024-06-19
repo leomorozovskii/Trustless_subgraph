@@ -18,9 +18,9 @@ let PRECOMPILES: string[] = [
     '0x000000000000000000000000000000000000000a',
 ];
 
-function isPrecompiles(tokenAddress: Address): boolean {
+function isPrecompiles(contractAddress: Address): boolean {
     for (let i = 0; i < PRECOMPILES.length; ++i) {
-        if (tokenAddress.toHexString() == PRECOMPILES[i]) {
+        if (contractAddress.toHexString() == PRECOMPILES[i]) {
             return true;
         }
     }
@@ -28,7 +28,7 @@ function isPrecompiles(tokenAddress: Address): boolean {
 }
 
 export function fetchTokenSymbol(tokenAddress: Address): string {
-    let contract = ERC20.bind(tokenAddress);
+    const contract = ERC20.bind(tokenAddress);
 
     let symbolValue = 'UNKNOWN';
 
@@ -53,7 +53,7 @@ export function fetchTokenSymbol(tokenAddress: Address): string {
 }
 
 export function fetchTokenName(tokenAddress: Address): string {
-    let contract = ERC20.bind(tokenAddress);
+    const contract = ERC20.bind(tokenAddress);
 
     let name = 'UNKNOWN';
 
@@ -79,7 +79,7 @@ export function fetchTokenName(tokenAddress: Address): string {
 }
 
 export function fetchTokenDecimals(tokenAddress: Address): BigInt {
-    let contract = ERC20.bind(tokenAddress);
+    const contract = ERC20.bind(tokenAddress);
 
     let decimalValue = BigInt.fromString('0');
 
@@ -105,10 +105,10 @@ export function fetchTokenDecimals(tokenAddress: Address): BigInt {
 }
 
 export function fetchOfferDetails(
-    tokenAddress: Address,
+    contractAddress: Address,
     tradeID: BigInt,
 ): ethereum.CallResult<TrustlessOTC__getOfferDetailsResult> {
-    let contract = TrustlessOTC.bind(tokenAddress);
+    const contract = TrustlessOTC.bind(contractAddress);
 
     let offerDetails =
         new ethereum.CallResult<TrustlessOTC__getOfferDetailsResult>();
@@ -117,11 +117,33 @@ export function fetchOfferDetails(
     if (offerDetails.reverted) {
         log.warning(
             'Failed to fetch offer details for contract at address: {}',
-            [tokenAddress.toHex()],
+            [contractAddress.toHex()],
         );
     } else {
         offerDetails = offerDetails;
     }
 
     return offerDetails;
+}
+
+export function fetchUserTradesAndValidateTaker(
+    contractAddress: Address,
+    user: Address,
+    tradeID: BigInt,
+): bool {
+    const contract = TrustlessOTC.bind(contractAddress);
+
+    let tradeIds = new ethereum.CallResult<Array<BigInt>>();
+
+    tradeIds = contract.try_getUserTrades(user);
+    if (tradeIds.reverted) {
+        log.warning('Failed to fetch user trades for contract at address: {}', [
+            contractAddress.toHex(),
+        ]);
+    } else {
+        tradeIds = tradeIds;
+    }
+
+    const isTaker = tradeIds.value.includes(tradeID);
+    return isTaker;
 }

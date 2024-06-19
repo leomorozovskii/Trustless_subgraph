@@ -24,6 +24,7 @@ import {
     fetchTokenDecimals,
     fetchTokenName,
     fetchTokenSymbol,
+    fetchUserTradesAndValidateTaker,
 } from './helpers';
 
 export const ADDRESS_ZERO = Bytes.fromHexString(
@@ -60,9 +61,9 @@ export function handleInitiateTrade(call: InitiateTradeCall): void {
         tokenTo.save();
     }
 
-    let offer = OfferCreated.load(call.transaction.hash.toHexString());
-    if (offer) {
-        let tradeOffer = TradeOffer.load(offer.tradeID.toString());
+    const offerCreated = OfferCreated.load(call.transaction.hash.toHexString());
+    if (offerCreated) {
+        const tradeOffer = TradeOffer.load(offerCreated.tradeID.toString());
         if (tradeOffer) {
             tradeOffer.optionalTaker = call.inputs._optionalTaker;
 
@@ -72,12 +73,12 @@ export function handleInitiateTrade(call: InitiateTradeCall): void {
 }
 
 export function handleOfferCreated(event: OfferCreatedEvent): void {
-    let offer = new OfferCreated(event.transaction.hash.toHexString());
+    const offerCreated = new OfferCreated(event.transaction.hash.toHexString());
 
     let tradeOffer = TradeOffer.load(event.params.tradeID.toString());
     if (tradeOffer == null) {
         tradeOffer = new TradeOffer(event.params.tradeID.toString());
-        let offerDetails = fetchOfferDetails(
+        const offerDetails = fetchOfferDetails(
             event.address,
             event.params.tradeID,
         ).value;
@@ -105,15 +106,15 @@ export function handleOfferCreated(event: OfferCreatedEvent): void {
 
         tradeOffer.save();
 
-        offer.tradeOffer = tradeOffer.id;
+        offerCreated.tradeOffer = tradeOffer.id;
     }
 
-    offer.creator = tradeOffer.creator;
-    offer.tradeID = event.params.tradeID;
-    offer.blockNumber = event.block.number;
-    offer.blockTimestamp = event.block.timestamp;
-    offer.transactionHash = event.transaction.hash;
-    offer.save();
+    offerCreated.creator = tradeOffer.creator;
+    offerCreated.tradeID = event.params.tradeID;
+    offerCreated.blockNumber = event.block.number;
+    offerCreated.blockTimestamp = event.block.timestamp;
+    offerCreated.transactionHash = event.transaction.hash;
+    offerCreated.save();
 
     let stats = OfferStats.load(tradeOffer.creator);
     if (!stats) {
@@ -130,7 +131,7 @@ export function handleOfferCreated(event: OfferCreatedEvent): void {
 }
 
 export function handleOfferCancelled(event: OfferCancelledEvent): void {
-    let tradeOffer = TradeOffer.load(event.params.tradeID.toString());
+    const tradeOffer = TradeOffer.load(event.params.tradeID.toString());
 
     if (tradeOffer) {
         tradeOffer.active = false;
@@ -138,16 +139,18 @@ export function handleOfferCancelled(event: OfferCancelledEvent): void {
         tradeOffer.cancelHash = event.transaction.hash;
         tradeOffer.save();
 
-        let offer = new OfferCancelled(tradeOffer.tradeID.toString());
-        offer.tradeID = event.params.tradeID;
-        offer.tradeOffer = tradeOffer.id;
-        offer.creator = tradeOffer.creator;
-        offer.blockNumber = event.block.number;
-        offer.blockTimestamp = event.block.timestamp;
-        offer.transactionHash = event.transaction.hash;
-        offer.save();
+        const offerCancelled = new OfferCancelled(
+            tradeOffer.tradeID.toString(),
+        );
+        offerCancelled.tradeID = event.params.tradeID;
+        offerCancelled.tradeOffer = tradeOffer.id;
+        offerCancelled.creator = tradeOffer.creator;
+        offerCancelled.blockNumber = event.block.number;
+        offerCancelled.blockTimestamp = event.block.timestamp;
+        offerCancelled.transactionHash = event.transaction.hash;
+        offerCancelled.save();
 
-        let stats = OfferStats.load(tradeOffer.creator);
+        const stats = OfferStats.load(tradeOffer.creator);
         if (stats) {
             stats.canceled = stats.canceled.plus(ONE_BI);
             stats.lastUpdateTimestamp = event.block.timestamp;
@@ -211,10 +214,16 @@ export function handleOfferTaken(event: OfferTakenEvent): void {
                 );
                 const creator: Address = Address.fromBytes(tradeOffer.creator);
 
-                if (creator == toAddress) {
-                    tradeOffer.taker = fromAddress;
+                if (creator == toAddress && fromAddress != event.address) {
+                    const isTaker = fetchUserTradesAndValidateTaker(
+                        event.address,
+                        fromAddress,
+                        event.params.tradeID,
+                    );
+
+                    tradeOffer.taker = isTaker ? fromAddress : ADDRESS_ZERO;
                     tradeOffer.save();
-                    offerTaken.taker = fromAddress;
+                    offerTaken.taker = isTaker ? fromAddress : ADDRESS_ZERO;
                     offerTaken.save();
                 }
             }
