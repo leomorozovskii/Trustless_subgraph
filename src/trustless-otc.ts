@@ -5,7 +5,6 @@ import {
     InitiateTradeCall as InitiateTradeCall,
 } from '../generated/TrustlessOTC/TrustlessOTC';
 import {
-    OfferCancelled,
     OfferTaken,
     TradeOffer,
     Token,
@@ -102,17 +101,6 @@ export function handleOfferCancelled(event: OfferCancelledEvent): void {
         tradeOffer.cancelTimestamp = event.block.timestamp;
         tradeOffer.cancelHash = event.transaction.hash;
         tradeOffer.save();
-
-        const offerCancelled = new OfferCancelled(
-            tradeOffer.tradeID.toString(),
-        );
-        offerCancelled.tradeID = event.params.tradeID;
-        offerCancelled.tradeOffer = tradeOffer.id;
-        offerCancelled.creator = tradeOffer.creator;
-        offerCancelled.blockNumber = event.block.number;
-        offerCancelled.blockTimestamp = event.block.timestamp;
-        offerCancelled.transactionHash = event.transaction.hash;
-        offerCancelled.save();
     }
 }
 
