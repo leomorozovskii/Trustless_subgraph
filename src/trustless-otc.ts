@@ -6,7 +6,6 @@ import {
 } from '../generated/TrustlessOTC/TrustlessOTC';
 import {
     OfferCancelled,
-    OfferCreated,
     OfferTaken,
     TradeOffer,
     Token,
@@ -59,21 +58,9 @@ export function handleInitiateTrade(call: InitiateTradeCall): void {
         tokenTo.decimals = fetchTokenDecimals(call.inputs._tokenTo);
         tokenTo.save();
     }
-
-    const offerCreated = OfferCreated.load(call.transaction.hash.toHexString());
-    if (offerCreated) {
-        const tradeOffer = TradeOffer.load(offerCreated.tradeID.toString());
-        if (tradeOffer) {
-            tradeOffer.optionalTaker = call.inputs._optionalTaker;
-
-            tradeOffer.save();
-        }
-    }
 }
 
 export function handleOfferCreated(event: OfferCreatedEvent): void {
-    const offerCreated = new OfferCreated(event.transaction.hash.toHexString());
-
     let tradeOffer = TradeOffer.load(event.params.tradeID.toString());
     if (tradeOffer == null) {
         tradeOffer = new TradeOffer(event.params.tradeID.toString());
@@ -104,16 +91,7 @@ export function handleOfferCreated(event: OfferCreatedEvent): void {
         tradeOffer.creationHash = event.transaction.hash;
 
         tradeOffer.save();
-
-        offerCreated.tradeOffer = tradeOffer.id;
     }
-
-    offerCreated.creator = tradeOffer.creator;
-    offerCreated.tradeID = event.params.tradeID;
-    offerCreated.blockNumber = event.block.number;
-    offerCreated.blockTimestamp = event.block.timestamp;
-    offerCreated.transactionHash = event.transaction.hash;
-    offerCreated.save();
 }
 
 export function handleOfferCancelled(event: OfferCancelledEvent): void {
