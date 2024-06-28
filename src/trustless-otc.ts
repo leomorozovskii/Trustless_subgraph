@@ -8,7 +8,6 @@ import {
     OfferCancelled,
     OfferCreated,
     OfferTaken,
-    OfferStats,
     TradeOffer,
     Token,
 } from '../generated/schema';
@@ -115,19 +114,6 @@ export function handleOfferCreated(event: OfferCreatedEvent): void {
     offerCreated.blockTimestamp = event.block.timestamp;
     offerCreated.transactionHash = event.transaction.hash;
     offerCreated.save();
-
-    let stats = OfferStats.load(tradeOffer.creator);
-    if (!stats) {
-        stats = new OfferStats(tradeOffer.creator);
-        stats.accepted = ZERO_BI;
-        stats.canceled = ZERO_BI;
-        stats.total = ZERO_BI;
-        stats.lastUpdateTimestamp = ZERO_BI;
-    }
-
-    stats.total = stats.total.plus(ONE_BI);
-    stats.lastUpdateTimestamp = event.block.timestamp;
-    stats.save();
 }
 
 export function handleOfferCancelled(event: OfferCancelledEvent): void {
@@ -149,13 +135,6 @@ export function handleOfferCancelled(event: OfferCancelledEvent): void {
         offerCancelled.blockTimestamp = event.block.timestamp;
         offerCancelled.transactionHash = event.transaction.hash;
         offerCancelled.save();
-
-        const stats = OfferStats.load(tradeOffer.creator);
-        if (stats) {
-            stats.canceled = stats.canceled.plus(ONE_BI);
-            stats.lastUpdateTimestamp = event.block.timestamp;
-            stats.save();
-        }
     }
 }
 
@@ -178,13 +157,6 @@ export function handleOfferTaken(event: OfferTakenEvent): void {
         offerTaken.blockTimestamp = event.block.timestamp;
         offerTaken.transactionHash = event.transaction.hash;
         offerTaken.save();
-
-        const stats = OfferStats.load(tradeOffer.creator);
-        if (stats) {
-            stats.accepted = stats.accepted.plus(ONE_BI);
-            stats.lastUpdateTimestamp = event.block.timestamp;
-            stats.save();
-        }
     }
 
     const txReceipt: ethereum.TransactionReceipt | null = event.receipt;

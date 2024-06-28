@@ -58,11 +58,3 @@ type OfferTaken @entity(immutable: true) {
     blockTimestamp: BigInt!
     transactionHash: Bytes!
 }
-
-type OfferStats @entity {
-    id: Bytes!
-    canceled: BigInt!
-    accepted: BigInt!
-    total: BigInt!
-    lastUpdateTimestamp: BigInt!
-}
