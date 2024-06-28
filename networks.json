@@ -4,5 +4,17 @@
       "address": "0xE13aC924bB0B0260b7d7f2710c0224161b9f10Ed",
       "startBlock": 5987757
     }
+  },
+  "mainnet": {
+    "TrustlessOTC": {
+      "address": "0x3DF302A6e6f5F5a8eEBc844BbF2eCCE59879bA6A",
+      "startBlock": 16832772
+    }
+  },
+  "arbitrum-one": {
+    "TrustlessOTC": {
+      "address": "0xA36f2e5fd4e4BFFeB81cd7f64805E2302716e3a5",
+      "startBlock": 220966376 
+    }
   }
 }
