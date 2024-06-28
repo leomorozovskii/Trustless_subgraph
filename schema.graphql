@@ -28,13 +28,3 @@ type TradeOffer @entity {
     cancelHash: Bytes
     takenHash: Bytes
 }
-
-type OfferTaken @entity(immutable: true) {
-    id: String!
-    tradeID: BigInt!
-    tradeOffer: TradeOffer!
-    taker: Bytes!
-    blockNumber: BigInt!
-    blockTimestamp: BigInt!
-    transactionHash: Bytes!
-}

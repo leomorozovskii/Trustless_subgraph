@@ -4,11 +4,7 @@ import {
     OfferTaken as OfferTakenEvent,
     InitiateTradeCall as InitiateTradeCall,
 } from '../generated/TrustlessOTC/TrustlessOTC';
-import {
-    OfferTaken,
-    TradeOffer,
-    Token,
-} from '../generated/schema';
+import { TradeOffer, Token } from '../generated/schema';
 import {
     BigInt,
     Bytes,
@@ -106,7 +102,6 @@ export function handleOfferCancelled(event: OfferCancelledEvent): void {
 
 export function handleOfferTaken(event: OfferTakenEvent): void {
     const tradeOffer = TradeOffer.load(event.params.tradeID.toString());
-    let offerTaken = OfferTaken.load(event.params.tradeID.toString());
 
     if (tradeOffer) {
         tradeOffer.active = false;
@@ -114,15 +109,6 @@ export function handleOfferTaken(event: OfferTakenEvent): void {
         tradeOffer.takenTimestamp = event.block.timestamp;
         tradeOffer.takenHash = event.transaction.hash;
         tradeOffer.save();
-
-        offerTaken = new OfferTaken(event.params.tradeID.toString());
-        offerTaken.tradeID = event.params.tradeID;
-        offerTaken.tradeOffer = tradeOffer.id;
-        offerTaken.taker = ADDRESS_ZERO;
-        offerTaken.blockNumber = event.block.number;
-        offerTaken.blockTimestamp = event.block.timestamp;
-        offerTaken.transactionHash = event.transaction.hash;
-        offerTaken.save();
     }
 
     const txReceipt: ethereum.TransactionReceipt | null = event.receipt;
@@ -131,11 +117,7 @@ export function handleOfferTaken(event: OfferTakenEvent): void {
         for (let i = 0; i < txReceipt.logs.length; i++) {
             const log = txReceipt.logs[i];
 
-            if (
-                log.topics[0].toHexString() == TRANSFER_TOPIC &&
-                tradeOffer &&
-                offerTaken
-            ) {
+            if (log.topics[0].toHexString() == TRANSFER_TOPIC && tradeOffer) {
                 const correctFromAddressFormat = log.topics[1]
                     .toHexString()
                     .substr(26, 40);
@@ -161,8 +143,6 @@ export function handleOfferTaken(event: OfferTakenEvent): void {
 
                     tradeOffer.taker = isTaker ? fromAddress : ADDRESS_ZERO;
                     tradeOffer.save();
-                    offerTaken.taker = isTaker ? fromAddress : ADDRESS_ZERO;
-                    offerTaken.save();
                 }
             }
         }
