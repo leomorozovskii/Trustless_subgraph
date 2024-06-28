@@ -6,11 +6,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: TrustlessOTC
-    network: sepolia
+    network: mainnet
     source:
-      address: "0xE13aC924bB0B0260b7d7f2710c0224161b9f10Ed"
+      address: "0x3DF302A6e6f5F5a8eEBc844BbF2eCCE59879bA6A"
       abi: TrustlessOTC
-      startBlock: 5987757
+      startBlock: 16832772
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
