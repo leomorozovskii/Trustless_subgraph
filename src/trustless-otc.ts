@@ -2,7 +2,6 @@ import {
     OfferCancelled as OfferCancelledEvent,
     OfferCreated as OfferCreatedEvent,
     OfferTaken as OfferTakenEvent,
-    InitiateTradeCall as InitiateTradeCall,
 } from '../generated/TrustlessOTC/TrustlessOTC';
 import { TradeOffer, Token } from '../generated/schema';
 import {
@@ -28,32 +27,6 @@ export const ONE_BI = BigInt.fromI32(1);
 export const ZERO_BD = BigDecimal.fromString('0');
 export const TRANSFER_TOPIC =
     '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
-
-export function handleInitiateTrade(call: InitiateTradeCall): void {
-    // Added tokens
-    // create the tokens
-    let tokenFrom = Token.load(call.inputs._tokenFrom);
-    let tokenTo = Token.load(call.inputs._tokenTo);
-
-    // fetch info if null
-    if (tokenFrom === null) {
-        tokenFrom = new Token(call.inputs._tokenFrom);
-
-        tokenFrom.symbol = fetchTokenSymbol(call.inputs._tokenFrom);
-        tokenFrom.name = fetchTokenName(call.inputs._tokenFrom);
-        tokenFrom.decimals = fetchTokenDecimals(call.inputs._tokenFrom);
-        tokenFrom.save();
-    }
-
-    if (tokenTo === null) {
-        tokenTo = new Token(call.inputs._tokenTo);
-
-        tokenTo.symbol = fetchTokenSymbol(call.inputs._tokenTo);
-        tokenTo.name = fetchTokenName(call.inputs._tokenTo);
-        tokenTo.decimals = fetchTokenDecimals(call.inputs._tokenTo);
-        tokenTo.save();
-    }
-}
 
 export function handleOfferCreated(event: OfferCreatedEvent): void {
     let tradeOffer = TradeOffer.load(event.params.tradeID.toString());
@@ -86,6 +59,38 @@ export function handleOfferCreated(event: OfferCreatedEvent): void {
         tradeOffer.creationHash = event.transaction.hash;
 
         tradeOffer.save();
+
+        // Get info about tokenFrom
+        let tokenFrom = Token.load(tradeOffer.tokenFrom as Bytes);
+
+        // fetch info if null
+        if (tokenFrom === null) {
+            tokenFrom = new Token(tradeOffer.tokenFrom as Bytes);
+            const tokenFromAddress = Address.fromBytes(
+                tradeOffer.tokenFrom as Bytes,
+            );
+
+            tokenFrom.symbol = fetchTokenSymbol(tokenFromAddress);
+            tokenFrom.name = fetchTokenName(tokenFromAddress);
+            tokenFrom.decimals = fetchTokenDecimals(tokenFromAddress);
+            tokenFrom.save();
+        }
+
+        // Get info about tokenTo
+        let tokenTo = Token.load(tradeOffer.tokenTo as Bytes);
+
+        // fetch info if null
+        if (tokenTo === null) {
+            tokenTo = new Token(tradeOffer.tokenTo as Bytes);
+            const tokenToAddress = Address.fromBytes(
+                tradeOffer.tokenTo as Bytes,
+            );
+
+            tokenTo.symbol = fetchTokenSymbol(tokenToAddress);
+            tokenTo.name = fetchTokenName(tokenToAddress);
+            tokenTo.decimals = fetchTokenDecimals(tokenToAddress);
+            tokenTo.save();
+        }
     }
 }
 

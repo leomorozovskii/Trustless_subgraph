@@ -24,9 +24,6 @@ dataSources:
           file: ./abis/TrustlessOTC.json
         - name: ERC20
           file: ./abis/ERC20.json
-      callHandlers:
-        - function: initiateTrade(address,address,uint256,uint256,address)
-          handler: handleInitiateTrade
       eventHandlers:
         - event: OfferCancelled(indexed uint256)
           handler: handleOfferCancelled
